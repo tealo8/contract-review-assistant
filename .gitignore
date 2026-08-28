@@ -1,0 +1,16 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.env
+*.db
+data_storage/contract_files/
+chroma_db/
+output_reports/
+.vscode/
+.idea/
+*.bin
+*.gguf
+node_modules/
+frontend/dist/

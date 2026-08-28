@@ -1,0 +1,5 @@
+[
+  {"rule_name":"付款周期超过90天","rule_content":"付款周期>90天","rule_type":"num","enable":1,"description":"付款周期超过90天需升级审批"},
+  {"rule_name":"高额违约金","rule_content":"违约金|赔偿金","rule_type":"keyword","enable":1,"description":"命中高额责任措辞时提示法务复核"},
+  {"rule_name":"模糊条款人工复核","rule_content":"以双方另行协商|待定|无法判定","rule_type":"regex","enable":1,"description":"模糊语义禁止模型臆测"}
+]

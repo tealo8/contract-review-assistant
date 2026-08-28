@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  contract-review-api:
+    build: .
+    ports:
+      - "8082:8082"
+    env_file:
+      - .env
+    volumes:
+      - ./data_storage:/app/data_storage
+      - ./chroma_db:/app/chroma_db
+    restart: unless-stopped
