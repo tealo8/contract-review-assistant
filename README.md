@@ -69,7 +69,63 @@ CREATE TABLE system_config (
 
 ## 架构与安全
 
-前端上传 -> 上传中 -> 解析中 -> 待审查 -> AI 审查完成 -> 待法务复核 -> 复核完成 -> 报告导出。每次状态变化记录操作人和时间。当前默认审查器为可测试的确定性基线，Qwen2.5-7B 可在 `llm_audit/` 后接入，不改变 API 契约。知识库在新增、修改、禁用或删除后自动同步 Chroma；`.env` 中 `CHROMA_ENABLED=false` 时使用 SQLite 关键词检索降级。文件按用户绑定，上传大小限制 20MB，并校验扩展名、PDF 签名、DOCX 结构及解压体积；路径使用随机前缀和项目内相对路径，新建与重置的密码使用 bcrypt 哈希存储。
+下面两张图分别展示运行时调用架构和安全控制边界；不是单纯的流程文字。完整模块职责与审查时序见 [架构说明](docs/ARCHITECTURE.md)。
+
+### 运行时架构图
+
+```mermaid
+flowchart LR
+    WEB["浏览器 / Vue 3 工作台"] -->|HTTPS + JWT| API["FastAPI API 层"]
+    API --> AUTH["鉴权与角色策略"]
+    AUTH --> CONTRACT["合同服务<br/>上传 / 详情 / 比对"]
+    AUTH --> ADMIN["管理员服务<br/>规则 / 知识库 / 参数"]
+    AUTH --> REVIEW["法务复核服务"]
+
+    CONTRACT --> PARSER["文档解析器<br/>PDF / DOCX / TXT"]
+    PARSER --> ORCH["审查编排器"]
+    ORCH --> RULE["规则引擎<br/>关键词 / 正则 / 数值"]
+    ORCH --> RAG["RAG 检索链路"]
+    RAG --> CHROMA[("Chroma 向量库")]
+    RAG --> FALLBACK[("SQLite 关键词降级")]
+    RULE --> DB[("SQLite 业务库")]
+    RAG --> DB
+    CONTRACT --> DB
+    ADMIN --> DB
+    REVIEW --> DB
+    REVIEW --> REPORT["报告导出<br/>PDF / Markdown"]
+    REPORT --> WEB
+```
+
+审查状态按“上传中 -> 解析中 -> 待审查 -> AI 审查完成 -> 待法务复核 -> 复核完成”流转，每次变更记录操作人和时间。默认审查器是可测试的确定性基线，后续可在 `llm_audit/` 接入 Qwen2.5-7B 而不改变 API 契约；知识库变更会同步 Chroma，`CHROMA_ENABLED=false` 时自动降级到 SQLite 检索。
+
+### 安全控制架构图
+
+```mermaid
+flowchart TD
+    CLIENT["浏览器客户端"] --> TLS["HTTPS / CORS 来源限制"]
+    TLS --> TOKEN["JWT 签名、过期与账号状态校验"]
+    TOKEN --> RBAC{"服务端 RBAC"}
+    RBAC --> UPLOADER["uploader<br/>仅查看本人合同"]
+    RBAC --> LEGAL["legal_reviewer<br/>查看全部合同并复核"]
+    RBAC --> ADMINROLE["admin<br/>业务与系统设置"]
+
+    UPLOADER --> UPLOAD["上传安全门<br/>扩展名 / 大小 / 签名 / 结构"]
+    LEGAL --> REVIEWGATE["人工复核门<br/>逐条属实性判定"]
+    ADMINROLE --> ADMINAPI["/api/admin/*<br/>后端强制 403 拦截"]
+    UPLOAD --> PARSE["安全解析与相对路径存储"]
+    PARSE --> EVIDENCE["来源门禁"]
+    EVIDENCE --> RULESRC["业务规则 ID"]
+    EVIDENCE --> KNOWSRC["知识库条目 ID / 参考编号"]
+    RULESRC --> RISK["可追溯风险结果"]
+    KNOWSRC --> RISK
+    RISK --> REVIEWGATE
+    REVIEWGATE --> REPORT["带免责声明的审查报告"]
+    ADMINAPI --> HASH["bcrypt 密码哈希"]
+    HASH --> USERDB[("用户数据")]
+    RISK --> AUDITLOG[("状态与操作审计日志")]
+```
+
+风险没有规则 ID 或知识库依据时不落库，模糊结论转人工审阅；密码只保存 bcrypt 哈希，上传文件校验 PDF 签名、DOCX 结构、文件大小和路径边界。生产环境还应在解析前接入杀毒 / 沙箱，并通过密钥管理服务保存 `JWT_SECRET`。
 
 ## 快速改造
 

@@ -1,5 +1,34 @@
 # 安全、幻觉与风险治理
 
+## 安全控制架构图
+
+```mermaid
+flowchart TD
+    CLIENT["浏览器客户端"] --> TLS["HTTPS / CORS"]
+    TLS --> JWT["JWT 签名与过期校验"]
+    JWT --> RBAC{"服务端角色鉴权"}
+    RBAC --> U["uploader<br/>本人合同只读"]
+    RBAC --> L["legal_reviewer<br/>全量合同 + 法务复核"]
+    RBAC --> A["admin<br/>规则 / 知识库 / 用户 / 参数"]
+
+    U --> FILE["文件安全校验<br/>扩展名 / 大小 / PDF 签名 / DOCX 结构"]
+    L --> HUMAN["逐条人工复核<br/>属实 / 不属实 + 意见"]
+    A --> ADMINAPI["/api/admin/*<br/>非 admin 统一返回 403"]
+    FILE --> PARSER["安全解析与相对路径存储"]
+    PARSER --> GATE{"来源门禁"}
+    GATE --> RULE["启用业务规则 ID"]
+    GATE --> KNOW["启用知识库 ID / 参考编号"]
+    RULE --> RISK["带来源的风险结果"]
+    KNOW --> RISK
+    RISK --> HUMAN
+    HUMAN --> REPORT["审查报告 + 免责声明"]
+    ADMINAPI --> BCRYPT["bcrypt 哈希"]
+    BCRYPT --> USERDB[("用户表")]
+    RISK --> LOG[("状态 / 操作审计日志")]
+```
+
+这张图描述请求从入口到数据落库的安全边界：前端隐藏菜单只是体验层措施，真正的角色拦截、来源门禁、文件校验和密码保护均在后端完成。
+
 ## 幻觉治理
 
 本项目把“可追溯依据”作为风险落库门槛，而不是把模型文本直接当作结论：
