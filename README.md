@@ -41,6 +41,18 @@ chmod +x start.sh
 
 登录 `POST /api/auth/login`；合同上传 `POST /api/contracts/upload?project_id=1`；审查 `POST /api/contracts/{id}/audit`；报告 `GET /api/contracts/{id}/report?format=pdf|md`；版本比对 `POST /api/contracts/compare?old_id=1&new_id=2`。管理员规则、知识库、用户和参数接口统一位于 `/api/admin/*`。完整交互文档启动后见 `/docs`。
 
+## 交付物索引
+
+| 交付物 | 位置 | 覆盖内容 |
+| --- | --- | --- |
+| 快速开始、角色和接口 | [README.md](README.md) | 一键启动、权限、演示账号、API 入口 |
+| Mermaid 架构图 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 总体架构、审查时序、状态机、模块边界 |
+| 测试用例与验证矩阵 | [docs/TEST_PLAN.md](docs/TEST_PLAN.md) | 功能、权限、安全、失败、管理员验收 |
+| 演示环境 | [docs/DEMO_ENV.md](docs/DEMO_ENV.md) | 环境组成、演示路径、重置和边界 |
+| 成本测算 | [docs/COST_ESTIMATE.md](docs/COST_ESTIMATE.md) | 本地/云端成本区间、公式和降本策略 |
+| 幻觉与安全 | [docs/SECURITY_RISK.md](docs/SECURITY_RISK.md) | 来源门禁、bcrypt、权限、文件安全、生产加固 |
+| 失败场景处理 | [docs/FAILURE_HANDLING.md](docs/FAILURE_HANDLING.md) | 用户可见错误、降级策略、运维排查 |
+
 ## 数据库扩展
 
 管理模块复用现有 `user`、`business_rule` 和 `knowledge_item` 表，仅新增以下系统配置表：
@@ -69,7 +81,11 @@ CREATE TABLE system_config (
 
 ## 成本与部署
 
-默认不依赖外部 LLM，适合本地演示；私有化 Qwen2.5-7B 运行时主要成本是模型显存。SQLite、合同文件和报告均落在 `data_storage/`，向量库目录为 `chroma_db/`。可使用 `docker compose up --build` 暴露 `8082` 端口。
+默认不依赖外部 LLM，适合本地演示；私有化 Qwen2.5-7B 运行时主要成本是模型显存。SQLite、合同文件和报告均落在 `data_storage/`，向量库目录为 `chroma_db/`。可使用 `docker compose up --build` 暴露 `8082` 端口。完整月度区间和测算公式见 [成本测算](docs/COST_ESTIMATE.md)，演示环境和推荐演示路径见 [演示环境](docs/DEMO_ENV.md)。
+
+## 幻觉、安全与失败处理
+
+风险结果必须绑定业务规则或知识库来源；无来源结论会被拦截，模糊条款会转人工审阅。上传接口校验扩展名、PDF 签名、DOCX 结构、文件大小、二进制内容和路径边界；账号密码使用 bcrypt，所有管理员接口由后端统一做角色拦截。Chroma、LLM、解析和报告生成均有降级或可重试路径，详细矩阵见 [安全与幻觉治理](docs/SECURITY_RISK.md) 与 [失败场景处理](docs/FAILURE_HANDLING.md)。
 
 ## 简历项目亮点
 

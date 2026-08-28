@@ -19,7 +19,7 @@
 
 ## 管理员系统设置用例
 
-1. 使用法务账号登录：导航栏不显示“系统设置”；手动输入 `/system-settings` 后应被拦截并跳转到总览，页面提示“您没有管理员权限”，同时管理员 API 返回 403。
+1. 使用法务账号登录：导航栏不显示“系统设置”；手动输入 `/system-settings` 后应被拦截并跳转到 `/403` 权限页，页面提示“您没有管理员权限”，同时管理员 API 返回 403。
 2. 使用 `admin / Admin123!` 登录：导航栏显示“系统设置”；完成业务规则的新增、编辑与禁用，上传能命中该规则的合同，验证保存后无需重启即生效。
 3. 管理员新增并启用知识库条目，上传相关合同，验证 RAG 可检索到新条目；禁用后验证 RAG 不再读取该条目。
 4. 管理员新增账号并分配 `uploader`、`legal_reviewer` 和 `admin` 角色，分别登录验证权限；禁用账号后验证无法登录，重置密码后验证旧密码失效且数据库仅保存 bcrypt 哈希。
@@ -28,6 +28,29 @@
 ## 异常用例
 
 损坏或伪造 PDF、损坏 DOCX、DOCX 解压体积异常、空文件、超 20MB 文件、包含 NUL 的文本、解析失败重试、LLM 超时部分结果、Chroma 故障回退 SQLite 检索、绝对/越界上传路径配置、越权 API 均需保留用户可理解的错误信息。
+
+## 交付物覆盖验收
+
+| 领域 | 验收证据 | 通过标准 |
+| --- | --- | --- |
+| README/快速开始 | `README.md`、`start.bat`、`start.sh` | 新环境按文档可启动并访问 8082 |
+| 架构 | `docs/ARCHITECTURE.md` Mermaid 图 | 能解释前端、API、解析、规则、RAG、复核和导出链路 |
+| 测试 | 本文件与 `backend/test_api.py` | 自动化测试通过，异常和权限场景有用例 |
+| 演示环境 | `docs/DEMO_ENV.md`、`demo_files/` | 三角色账号和两份样例可复现演示流程 |
+| 成本 | `docs/COST_ESTIMATE.md` | 有本地/云端区间、公式、假设和降本策略 |
+| 幻觉治理 | `docs/SECURITY_RISK.md` | 风险有来源门禁、模糊项转人工、报告含免责声明 |
+| 安全 | `docs/SECURITY_RISK.md` | JWT、bcrypt、角色隔离、上传校验和路径防穿越可验证 |
+| 失败处理 | `docs/FAILURE_HANDLING.md` | 依赖、端口、解析、LLM、Chroma、报告失败均有提示或降级 |
+
+## 自动化验证命令
+
+```bash
+python -m compileall -q backend
+python -m pytest -q
+cd frontend && npm run build
+```
+
+验收环境应额外执行 `GET /api/health`，使用三种角色各走一次登录和权限路径，并在 1440px 与 390px 视口检查详情、上传、设置和比对页面。
 
 ## 验证矩阵
 
