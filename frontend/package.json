@@ -1,1 +1,1 @@
-{"name":"contract-review-frontend","private":true,"version":"1.0.0","scripts":{"dev":"vite --host 0.0.0.0 --port 5173 --strictPort","build":"vite build"},"dependencies":{"@vitejs/plugin-vue":"latest","vite":"latest","vue":"^3.4.27"},"devDependencies":{}}
+{"name":"contract-review-frontend","private":true,"version":"1.0.0","scripts":{"dev":"vite --host 0.0.0.0 --strictPort","build":"vite build"},"dependencies":{"@vitejs/plugin-vue":"latest","vite":"latest","vue":"^3.4.27"},"devDependencies":{}}

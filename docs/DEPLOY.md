@@ -9,7 +9,7 @@ Windows：双击 start.bat
 Linux/macOS：chmod +x start.sh && ./start.sh
 ```
 
-脚本会创建 `venv`、安装 `requirements.txt` 和 `frontend/package.json` 依赖，检查 `8082`/`5173` 端口，启动 FastAPI 与 Vite，并自动打开浏览器。关闭所有前端页面后，运行时心跳会让脚本清理两个进程。
+脚本会创建 `venv`、安装 `requirements.txt` 和 `frontend/package.json` 依赖，以 `8082`（后端）和 `5173`（Vite）为默认端口逐个探测；若端口被占用，会自动顺延到首个可用端口，再启动 FastAPI 与 Vite 并打开浏览器。控制台会打印实际访问地址和端口；只有候选端口耗尽或服务启动失败时才退出。关闭所有前端页面后，运行时心跳会让脚本清理两个进程。
 
 ## Docker 演示
 
@@ -19,7 +19,7 @@ cp .env.example .env
 docker compose up --build
 ```
 
-访问 `http://localhost:8082`。`data_storage` 和 `chroma_db` 通过 Compose volume 持久化。默认 `CHROMA_ENABLED=false`，未部署 Chroma 时使用 SQLite 关键词检索。
+访问 `http://localhost:8082`。Docker Compose 固定使用宿主机 `8082:8082` 映射，不会像本地一键脚本一样自动顺延；若该端口已被占用，请先调整 `docker-compose.yml` 的宿主机映射。`data_storage` 和 `chroma_db` 通过 Compose volume 持久化。默认 `CHROMA_ENABLED=false`，未部署 Chroma 时使用 SQLite 关键词检索。
 
 ## 环境变量
 

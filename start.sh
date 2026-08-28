@@ -4,8 +4,8 @@ set -uo pipefail
 
 cd "$(dirname "$0")" || exit 1
 
-BACKEND_PORT=8082
-FRONTEND_PORT=5173
+BACKEND_PORT="${BACKEND_PORT:-8082}"
+FRONTEND_PORT="${FRONTEND_PORT:-5173}"
 VENV_PYTHON="venv/bin/python"
 BACKEND_PID=""
 FRONTEND_PID=""
@@ -91,23 +91,83 @@ else
   echo "[准备] 已发现前端依赖。"
 fi
 
-port_is_open() {
+port_is_available() {
   "$VENV_PYTHON" - "$1" <<'PY'
 import socket
 import sys
 
-sock = socket.socket()
-sock.settimeout(0.3)
-raise SystemExit(0 if sock.connect_ex(("127.0.0.1", int(sys.argv[1]))) == 0 else 1)
+port = int(sys.argv[1])
+
+def can_connect(family, address):
+    sock = socket.socket(family, socket.SOCK_STREAM)
+    sock.settimeout(0.3)
+    try:
+        return sock.connect_ex(address) == 0
+    finally:
+        sock.close()
+
+def can_bind(family, address):
+    sock = socket.socket(family, socket.SOCK_STREAM)
+    try:
+        # Windows otherwise permits a wildcard probe beside a loopback listener.
+        if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        if family == socket.AF_INET6 and hasattr(socket, "IPV6_V6ONLY"):
+            # Check IPv6-only listeners without colliding with the IPv4 probe.
+            sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
+        sock.bind(address)
+        return True
+    except OSError:
+        return False
+    finally:
+        sock.close()
+
+if can_connect(socket.AF_INET, ("127.0.0.1", port)):
+    raise SystemExit(1)
+if socket.has_ipv6 and can_connect(socket.AF_INET6, ("::1", port)):
+    raise SystemExit(1)
+if not can_bind(socket.AF_INET, ("0.0.0.0", port)):
+    raise SystemExit(1)
+try:
+    ipv6_available = socket.has_ipv6
+except AttributeError:
+    ipv6_available = False
+if ipv6_available and not can_bind(socket.AF_INET6, ("::", port)):
+    raise SystemExit(1)
+raise SystemExit(0)
 PY
 }
 
-if port_is_open "$BACKEND_PORT"; then
-  fail "端口 $BACKEND_PORT 已被占用，请关闭占用该端口的程序后重试。"
+find_free_port() {
+  local candidate="$1"
+  local label="$2"
+  local reserved="${3:-}"
+  local previous
+
+  if ! [[ "$candidate" =~ ^[0-9]+$ ]] || (( candidate < 1 || candidate > 65535 )); then
+    echo "[错误] $label起始端口必须是 1 到 65535 之间的数字。" >&2
+    return 1
+  fi
+  while [[ "$candidate" == "$reserved" ]] || ! port_is_available "$candidate"; do
+    if (( candidate >= 65535 )); then
+      echo "[错误] $label没有可用端口（已扫描到 65535）。" >&2
+      return 1
+    fi
+    previous="$candidate"
+    candidate=$((candidate + 1))
+    echo "[端口] $label端口 $previous 已被占用，自动顺延至 $candidate。" >&2
+  done
+  printf '%s' "$candidate"
+}
+
+if ! BACKEND_PORT="$(find_free_port "$BACKEND_PORT" "后端")"; then
+  fail "后端端口自动分配失败，请检查端口范围或手动释放端口。"
 fi
-if port_is_open "$FRONTEND_PORT"; then
-  fail "前端开发端口 $FRONTEND_PORT 已被占用，请关闭占用该端口的程序后重试。"
+if ! FRONTEND_PORT="$(find_free_port "$FRONTEND_PORT" "前端" "$BACKEND_PORT")"; then
+  fail "前端端口自动分配失败，请检查端口范围或手动释放端口。"
 fi
+
+echo "[端口] 后端将使用 $BACKEND_PORT，前端开发服务将使用 $FRONTEND_PORT。"
 
 echo
 echo "[启动] 正在启动 FastAPI 后端..."
@@ -130,14 +190,14 @@ sleep 2
 echo "[启动] 正在启动 Vue 3 前端..."
 (
   cd frontend || exit 1
-  npm run dev
+  npm run dev -- --port "$FRONTEND_PORT"
 ) &
 FRONTEND_PID=$!
 
 frontend_ready=false
 for _ in $(seq 1 30); do
   kill -0 "$FRONTEND_PID" 2>/dev/null || fail "前端进程提前退出，请检查上方 npm 输出。"
-  if port_is_open "$FRONTEND_PORT"; then
+  if ! port_is_available "$FRONTEND_PORT"; then
     frontend_ready=true
     break
   fi
@@ -148,6 +208,7 @@ done
 echo
 echo "=================================================="
 echo " 启动成功：http://localhost:$BACKEND_PORT"
+echo " 前端开发服务：http://localhost:$FRONTEND_PORT"
 echo " 当前部分业务模块尚未编码完成，部分接口返回 404。"
 echo " 关闭所有前端页面后，前后端服务会自动退出。"
 echo "=================================================="

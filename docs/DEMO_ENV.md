@@ -4,8 +4,8 @@
 
 | 项目 | 默认值 |
 | --- | --- |
-| 后端 | FastAPI + Uvicorn，`http://localhost:8082` |
-| 前端开发服务 | Vue 3 + Vite，`http://localhost:5173` |
+| 后端 | FastAPI + Uvicorn，默认 `http://localhost:8082`（占用时自动顺延） |
+| 前端开发服务 | Vue 3 + Vite，默认 `http://localhost:5173`（占用时自动顺延） |
 | 数据库 | 项目根目录 `data_storage/contract_review.db` |
 | 文件存储 | `data_storage/contract_files/` |
 | 向量检索 | `CHROMA_ENABLED=false` 时使用 SQLite 降级；可选 Chroma |
@@ -20,7 +20,7 @@ Windows：双击 start.bat
 Linux/macOS：chmod +x start.sh && ./start.sh
 ```
 
-脚本会检查 Python 3.10+、Node.js、端口和依赖；没有 `.env` 时复制 `.env.example`。启动成功后自动打开 `http://localhost:8082`，控制台会提示部分业务接口仍可能返回 404。关闭所有前端页面后，心跳检测会停止前后端进程。
+脚本会检查 Python 3.10+、Node.js 和依赖，并从默认端口 `8082`/`5173` 开始逐个探测；端口被占用时自动顺延到首个可用端口。没有 `.env` 时复制 `.env.example`。启动成功后自动打开实际后端地址（默认 `http://localhost:8082`），控制台同时打印实际前端端口，并提示部分业务接口仍可能返回 404。关闭所有前端页面后，心跳检测会停止前后端进程。
 
 ## 演示账号
 

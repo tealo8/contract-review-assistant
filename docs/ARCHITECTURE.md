@@ -98,4 +98,4 @@ stateDiagram-v2
 - `docs/demo_seed.sql`：bcrypt 演示账号、规则、知识库和系统参数初始化数据。
 - `frontend/assets/contract-review-logo.svg`：导航栏与 favicon 使用的项目 Logo。
 
-默认部署由一个 Uvicorn 进程在 `8082` 提供 API 与前端静态文件；开发脚本额外启动 Vite `5173` 以支持热更新。
+默认部署由一个 Uvicorn 进程在 `8082` 提供 API 与前端静态文件；开发脚本额外启动 Vite，默认使用 `5173`，若端口被占用则自动顺延并通过 `--port` 传入实际端口以支持热更新。
